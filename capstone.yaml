@@ -1,0 +1,11 @@
+run: docker compose up --build
+seed: docker compose exec api python -m app.db.seed
+test: docker compose exec api pytest
+base_url: http://localhost:8000
+endpoints:
+  - GET /health
+  - POST /tenants
+  - GET /usage
+  - POST /generate
+  - POST /billing/checkout
+  - POST /webhooks/stripe
