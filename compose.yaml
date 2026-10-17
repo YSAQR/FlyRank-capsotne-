@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: flyrank
+      POSTGRES_PASSWORD: flyrank_dev_password
+      POSTGRES_DB: flyrank_billing
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flyrank -d flyrank_billing"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://flyrank:flyrank_dev_password@db:5432/flyrank_billing
+      TENANT_DEV_TOKEN: ${TENANT_DEV_TOKEN:-change-me-dev-token}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
+      STRIPE_PRO_PRICE_ID: ${STRIPE_PRO_PRICE_ID:-price_placeholder}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      CHECKOUT_SUCCESS_URL: ${CHECKOUT_SUCCESS_URL:-http://localhost:8000/docs?checkout=success}
+      CHECKOUT_CANCEL_URL: ${CHECKOUT_CANCEL_URL:-http://localhost:8000/docs?checkout=cancel}
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m app.db.seed &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  postgres_data:
